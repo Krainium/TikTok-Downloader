@@ -1,4 +1,4 @@
-# tiktok
+# TikTok Downloader
 
 > Download TikTok videos and image slideshows — CLI tool and full web app.
 
