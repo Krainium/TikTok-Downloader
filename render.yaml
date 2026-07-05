@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: tiktok-downloader
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/config
+    autoDeploy: true
+    envVars:
+      # Live-browser Explore uses Chromium (RAM-heavy). Leave 0 on free (oEmbed
+      # feed); set 1 on a >=1GB plan for the auto-rotating trending feed.
+      - key: EXPLORE_LIVE
+        value: "0"
+      # Your residential proxy (set values in the Render dashboard, not here).
+      - key: TIKTOK_PROXY_HOST
+        sync: false
+      - key: TIKTOK_PROXY_PORT
+        sync: false
+      - key: TIKTOK_PROXY_USER
+        sync: false
+      - key: TIKTOK_PROXY_PASS
+        sync: false
