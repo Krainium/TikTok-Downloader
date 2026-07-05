@@ -46,7 +46,20 @@ async function getBrowser(): Promise<Browser> {
     const { chromium } = await import('playwright');
     const b = await chromium.launch({
       headless: true,
-      args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-blink-features=AutomationControlled'],
+      // Memory-frugal flags so Chromium fits in a 512 MB container (single-process
+      // collapses the renderer/browser into one process — much lower RAM).
+      args: [
+        '--no-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-blink-features=AutomationControlled',
+        '--single-process',
+        '--no-zygote',
+        '--disable-gpu',
+        '--disable-extensions',
+        '--disable-background-networking',
+        '--disable-features=site-per-process,TranslateUI',
+        '--js-flags=--max-old-space-size=256',
+      ],
       proxy: proxyConfigured()
         ? { server: `http://${PROXY.host}:${PROXY.port}`, username: PROXY.user, password: PROXY.pass }
         : undefined,
