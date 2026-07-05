@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { api } from '../api';
 
 interface Props {
-  proxyStatus: string;
+  configured: boolean;
   onClose: () => void;
-  onSaved: (status: string, configured: boolean) => void;
+  onSaved: (configured: boolean) => void;
   onError: (msg: string) => void;
 }
 
-export function SettingsModal({ proxyStatus, onClose, onSaved, onError }: Props) {
+export function SettingsModal({ configured, onClose, onSaved, onError }: Props) {
   const [value, setValue] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -17,7 +17,7 @@ export function SettingsModal({ proxyStatus, onClose, onSaved, onError }: Props)
     setSaving(true);
     try {
       const r = await api.setProxy(value.trim());
-      onSaved(r.proxy, r.proxyConfigured);
+      onSaved(r.proxyConfigured);
       setValue('');
     } catch (e) {
       onError(e instanceof Error ? e.message : String(e));
@@ -59,7 +59,7 @@ export function SettingsModal({ proxyStatus, onClose, onSaved, onError }: Props)
           </button>
         </div>
         <p className="proxy-status">
-          Current: <b>{proxyStatus}</b>
+          Current: <b>{configured ? 'Active' : 'Not set'}</b>
         </p>
       </div>
     </div>
