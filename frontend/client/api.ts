@@ -18,7 +18,7 @@ export const api = {
   explore: () => request<{ items: ExploreItem[] }>('/api/explore'),
 
   setProxy: (proxy: string) =>
-    request<{ ok: boolean; proxyConfigured: boolean; proxy: string }>('/api/proxy', {
+    request<{ ok: boolean; proxyConfigured: boolean }>('/api/proxy', {
       method: 'POST',
       body: JSON.stringify({ proxy }),
     }),
