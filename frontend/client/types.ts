@@ -44,7 +44,6 @@ export interface SavedFileInfo {
 
 export interface ConfigInfo {
   proxyConfigured: boolean;
-  proxy: string;
 }
 
 export interface ExploreItem {
