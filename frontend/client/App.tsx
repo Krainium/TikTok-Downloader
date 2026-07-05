@@ -32,7 +32,6 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [exploreOpen, setExploreOpen] = useState(false);
   const [proxyConfigured, setProxyConfigured] = useState(false);
-  const [proxyStatus, setProxyStatus] = useState('not set');
 
   const { toasts, push, dismiss } = useToasts();
   const unsubscribe = useRef<(() => void) | null>(null);
@@ -48,10 +47,7 @@ export default function App() {
   useEffect(() => {
     api
       .getConfig()
-      .then((c) => {
-        setProxyConfigured(c.proxyConfigured);
-        setProxyStatus(c.proxy);
-      })
+      .then((c) => setProxyConfigured(c.proxyConfigured))
       .catch(() => {});
     return () => unsubscribe.current?.();
   }, []);
@@ -230,7 +226,7 @@ export default function App() {
             </a>
             <span className={`pill${proxyConfigured ? ' on' : ''}`} title="Proxy status">
               <i className="dot" />
-              <span>{proxyConfigured ? proxyStatus : 'proxy: not set'}</span>
+              <span>{proxyConfigured ? 'proxy: active' : 'proxy: not set'}</span>
             </span>
             <button className="icon-btn" aria-label="Settings" title="Settings" onClick={() => setSettingsOpen(true)}>
               ⚙
@@ -286,12 +282,11 @@ export default function App() {
 
       {settingsOpen && (
         <SettingsModal
-          proxyStatus={proxyStatus}
+          configured={proxyConfigured}
           onClose={() => setSettingsOpen(false)}
-          onSaved={(status, configured) => {
-            setProxyStatus(status);
+          onSaved={(configured) => {
             setProxyConfigured(configured);
-            push('ok', `Proxy set → ${status}`);
+            push('ok', 'Proxy saved.');
           }}
           onError={(msg) => push('err', `Could not set proxy: ${msg}`)}
         />
