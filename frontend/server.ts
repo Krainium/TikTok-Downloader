@@ -6,7 +6,7 @@
  *
  *   GET  /                      → the SPA (public/index.html)
  *   GET  /<asset>               → static files from public/
- *   GET  /api/config            → current proxy mode + (redacted) proxy status
+ *   GET  /api/config            → whether a proxy is configured (boolean only)
  *   POST /api/proxy             → set the residential proxy (host:port:user:pass)
  *   POST /api/extract           → metadata + formats/images for a URL (preview)
  *   POST /api/download          → start a server-side download job → { jobId }
@@ -26,7 +26,6 @@ import { downloadToFile, httpStream, httpText } from '../src/http.js';
 import {
   setProxyFromString,
   proxyConfigured,
-  proxyDisplay,
   WEB_UA,
   redact,
 } from '../src/config.js';
@@ -485,7 +484,8 @@ async function handleApi(req: http.IncomingMessage, res: http.ServerResponse, ur
   const method = req.method ?? 'GET';
 
   if (pathname === '/api/config' && method === 'GET') {
-    return sendJson(res, 200, { proxyConfigured: proxyConfigured(), proxy: proxyDisplay() });
+    // Never expose proxy host/port/user to the browser — only whether one is set.
+    return sendJson(res, 200, { proxyConfigured: proxyConfigured() });
   }
 
   if (pathname === '/api/explore' && method === 'GET') {
@@ -497,7 +497,7 @@ async function handleApi(req: http.IncomingMessage, res: http.ServerResponse, ur
     const input = typeof body.proxy === 'string' ? body.proxy : '';
     const err = setProxyFromString(input);
     if (err) return sendJson(res, 400, { ok: false, error: err });
-    return sendJson(res, 200, { ok: true, proxyConfigured: proxyConfigured(), proxy: proxyDisplay() });
+    return sendJson(res, 200, { ok: true, proxyConfigured: proxyConfigured() });
   }
 
   if (pathname === '/api/extract' && method === 'POST') {
