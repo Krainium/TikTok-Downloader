@@ -1,0 +1,9 @@
+node_modules
+dist
+frontend/dist
+downloads
+.git
+*.log
+npm-debug.log*
+.DS_Store
+.env
