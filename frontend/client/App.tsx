@@ -214,7 +214,7 @@ export default function App() {
             </button>
             <a
               className="top-link"
-              href="https://github.com/krainium"
+              href="https://github.com/Krainium/TikTok-Downloader"
               target="_blank"
               rel="noopener noreferrer"
               title="View source on GitHub"
