@@ -1,13 +1,14 @@
-# Vercel container image: the web server plus Xray for the VLESS exit pool.
+# Vercel container image: web server + Xray (VLESS exit pool) + Chromium.
 #
-# Unlike the Render image this one skips the Playwright/Chromium install —
-# Explore runs in oEmbed mode here (EXPLORE_LIVE=0), and a browser would add
-# ~1 GB to the image for a feature that is off.
+# Chromium is here because Explore runs in live mode (EXPLORE_LIVE=1), which
+# drives TikTok's trending page through Playwright. It is the bulk of the image,
+# so cold starts are noticeably slower than a plain Node build.
 
 FROM node:20-bookworm-slim
 
 WORKDIR /app
 ENV NODE_ENV=development
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ca-certificates curl unzip netcat-openbsd \
@@ -25,6 +26,9 @@ RUN curl -fsSL -o /tmp/xray.zip \
 COPY package.json package-lock.json ./
 RUN npm ci --include=dev
 
+# Chromium for the live Explore feed.
+RUN npx playwright install --with-deps chromium
+
 COPY . .
 RUN npm run web:build
 
@@ -33,7 +37,7 @@ RUN chmod +x ./docker-entrypoint.sh
 
 ENV HOST=0.0.0.0
 ENV PORT=80
-ENV EXPLORE_LIVE=0
+ENV EXPLORE_LIVE=1
 EXPOSE 80
 
 CMD ["./docker-entrypoint.sh"]
