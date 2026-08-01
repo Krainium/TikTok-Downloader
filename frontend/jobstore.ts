@@ -98,7 +98,15 @@ export async function fetchSnapshot(id: string): Promise<JobSnapshot | null> {
   }
 }
 
-/** Upload a finished file and return its public URL. */
+/**
+ * Upload a finished file and return a URL the browser will save rather than
+ * play. Blob serves `content-disposition: inline` from the plain `url`, which
+ * makes a video open in the tab instead of downloading — `downloadUrl` is the
+ * same object served as an attachment.
+ *
+ * The index goes in the path rather than the filename so the saved file keeps
+ * its real name instead of picking up a `0-` prefix.
+ */
 export async function uploadFile(
   id: string,
   index: number,
@@ -109,12 +117,12 @@ export async function uploadFile(
   try {
     const { put } = await blob();
     const body = await readFile(filePath);
-    const res = await put(`jobs/${id}/${index}-${name}`, body, {
+    const res = await put(`jobs/${id}/${index}/${name}`, body, {
       access: 'public',
       addRandomSuffix: false,
       allowOverwrite: true,
     });
-    return res.url;
+    return res.downloadUrl ?? res.url;
   } catch {
     return undefined; // fall back to serving from local disk
   }
