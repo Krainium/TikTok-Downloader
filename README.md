@@ -2,7 +2,7 @@
 
 > Download TikTok videos and image slideshows — CLI tool and full web app.
 
-**Live:** [tiktok-downloader-ehxq.onrender.com](https://tiktok-downloader-ehxq.onrender.com)
+**Live:** [https://tiktokone.vercel.app](https://tiktokone.vercel.app)
 
 Native TypeScript engine that hits TikTok's own endpoints the way the apps do. No yt-dlp, no ffmpeg, no binaries. Pulls videos in best non-watermarked quality and every photo of a slideshow post, plus the audio track. Automatic residential-proxy fallback for when a datacenter IP gets blocked.
 
