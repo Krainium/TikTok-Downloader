@@ -265,6 +265,11 @@ select { width: 100%; appearance: none; background: var(--panel-solid); color: v
   /* Anything tappable gets at least a 40px box. */
   .top-link, .icon-btn, .pill { min-height: 40px; display: inline-flex; align-items: center; }
   .icon-btn { width: 40px; height: 40px; }
+  /* The wordmark is hidden here, so the logo alone has to carry the tap area. */
+  .brand { min-width: 40px; min-height: 40px; }
+  .top-link { min-width: 40px; justify-content: center; }
+  /* Connection chips sit at 29px tall by default, too small to hit reliably. */
+  .chip { min-height: 40px; display: inline-flex; align-items: center; }
 
   .searchbar { flex-wrap: wrap; }
   .searchbar input { flex-basis: 100%; }
