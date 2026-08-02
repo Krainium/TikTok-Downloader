@@ -20,6 +20,8 @@
 
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; padding: 0; }
+/* Decorative layers are oversized on purpose; never let them scroll the page. */
+html, body { overflow-x: hidden; }
 body {
   background: var(--bg);
   color: var(--text);
@@ -71,6 +73,8 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; background: rgba(
   position: fixed; inset: 0; z-index: 100; display: grid; place-items: center;
   background: radial-gradient(120% 120% at 50% 30%, #12121c 0%, #08080c 70%);
   transition: opacity 0.6s ease, visibility 0.6s ease;
+  /* The glows inside are 40vmax; clip them so they cannot widen the page. */
+  overflow: hidden;
 }
 .splash.hide { opacity: 0; visibility: hidden; }
 .splash-inner { position: relative; z-index: 2; text-align: center; animation: rise 0.8s cubic-bezier(.2,.7,.2,1) both; }
@@ -251,6 +255,22 @@ select { width: 100%; appearance: none; background: var(--panel-solid); color: v
 
 /* ============ Responsive ============ */
 @media (max-width: 560px) {
+  /* Five controls will not fit one row on a phone. The status dot carries the
+     meaning, so the wording goes and the rest tighten up. */
+  .topbar { gap: 8px; }
+  .top-actions { gap: 6px; }
+  .pill span { display: none; }
+  .pill { padding: 0 10px; }
+  .top-link { padding: 0 11px; font-size: 12.5px; gap: 5px; }
+  /* Anything tappable gets at least a 40px box. */
+  .top-link, .icon-btn, .pill { min-height: 40px; display: inline-flex; align-items: center; }
+  .icon-btn { width: 40px; height: 40px; }
+  /* The wordmark is hidden here, so the logo alone has to carry the tap area. */
+  .brand { min-width: 40px; min-height: 40px; }
+  .top-link { min-width: 40px; justify-content: center; }
+  /* Connection chips sit at 29px tall by default, too small to hit reliably. */
+  .chip { min-height: 40px; display: inline-flex; align-items: center; }
+
   .searchbar { flex-wrap: wrap; }
   .searchbar input { flex-basis: 100%; }
   .ghost-btn, .searchbar .primary-btn { flex: 1; justify-content: center; }
@@ -261,4 +281,11 @@ select { width: 100%; appearance: none; background: var(--panel-solid); color: v
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+}
+
+/* Narrow phones: the Explore wording is the last thing to go. */
+@media (max-width: 400px) {
+  .top-link.explore span { display: none; }
+  .top-link { padding: 0 9px; }
+  .top-actions { gap: 5px; }
 }

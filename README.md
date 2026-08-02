@@ -41,6 +41,10 @@ Then open `http://localhost:4444`.
 
 Ships with a `Dockerfile` and `render.yaml` for one-click Render deploys. Set `TIKTOK_PROXY_*` in the dashboard; set `EXPLORE_LIVE=1` on a ≥1 GB plan for the live-browser trending feed (leave `0` on free).
 
+**Vercel** uses `Dockerfile.vercel` instead, which adds Xray-core beside the server. Requests leave through a pool of VLESS nodes read from `VLESS_NODES` (one `vless://` URI per line, set in the project environment — not committed). Each instance pins one exit, so extraction and the CDN download share an IP.
+
+Because Vercel runs several instances, job state and finished files are mirrored to Vercel Blob when `BLOB_READ_WRITE_TOKEN` is set — otherwise the progress stream and file downloads break when a request lands on an instance that did not start the job. Without the token this is inert and behaves as on Render.
+
 ---
 
 ## CLI Tool

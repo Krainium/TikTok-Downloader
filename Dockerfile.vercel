@@ -1,0 +1,43 @@
+# Vercel container image: web server + Xray (VLESS exit pool) + Chromium.
+#
+# Chromium is here because Explore runs in live mode (EXPLORE_LIVE=1), which
+# drives TikTok's trending page through Playwright. It is the bulk of the image,
+# so cold starts are noticeably slower than a plain Node build.
+
+FROM node:20-bookworm-slim
+
+WORKDIR /app
+ENV NODE_ENV=development
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates curl unzip netcat-openbsd \
+ && rm -rf /var/lib/apt/lists/*
+
+# Xray-core is a static Go binary.
+ARG XRAY_VERSION=v26.3.27
+RUN curl -fsSL -o /tmp/xray.zip \
+      "https://github.com/XTLS/Xray-core/releases/download/${XRAY_VERSION}/Xray-linux-64.zip" \
+ && unzip -oq /tmp/xray.zip -d /usr/local/bin xray \
+ && chmod +x /usr/local/bin/xray \
+ && rm -f /tmp/xray.zip
+
+# devDeps are needed: the server runs through tsx and the frontend builds with vite.
+COPY package.json package-lock.json ./
+RUN npm ci --include=dev
+
+# Chromium for the live Explore feed.
+RUN npx playwright install --with-deps chromium
+
+COPY . .
+RUN npm run web:build
+
+COPY docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod +x ./docker-entrypoint.sh
+
+ENV HOST=0.0.0.0
+ENV PORT=80
+ENV EXPLORE_LIVE=1
+EXPOSE 80
+
+CMD ["./docker-entrypoint.sh"]

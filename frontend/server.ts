@@ -22,6 +22,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { extractPost, rankFormats } from '../src/extractor.js';
+import { publish, fetchSnapshot, uploadFile, sharedEnabled } from './jobstore.js';
 import { downloadToFile, httpStream, httpText } from '../src/http.js';
 import {
   setProxyFromString,
@@ -153,6 +154,8 @@ interface SavedFile {
   path: string;
   size: number;
   type: 'video' | 'image' | 'audio';
+  /** Blob URL once uploaded; lets another instance serve the file. */
+  href?: string;
 }
 interface Job {
   id: string;
@@ -164,10 +167,72 @@ interface Job {
 }
 const jobs = new Map<string, Job>();
 
+/**
+ * Stream a job this instance does not own. The owning instance mirrors its
+ * frame log to shared storage; we poll it and forward whatever is new.
+ */
+const SHARED_POLL_MS = 1000;
+const SHARED_MAX_WAIT_MS = 10 * 60_000;
+
+async function streamSharedJob(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  jobId: string,
+): Promise<void> {
+  const first = await fetchSnapshot(jobId);
+  if (!first) {
+    sendJson(res, 404, { error: 'unknown job' });
+    return;
+  }
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+  res.write('retry: 3000\n\n');
+
+  let sent = 0;
+  let open = true;
+  req.on('close', () => { open = false; });
+
+  const deadline = Date.now() + SHARED_MAX_WAIT_MS;
+  let snap = first;
+  for (;;) {
+    for (; sent < snap.log.length; sent++) res.write(snap.log[sent]!);
+    if (!open) return;
+    if (snap.finished) break;
+    if (Date.now() > deadline) {
+      res.write(`data: ${JSON.stringify({ type: 'error', message: 'timed out waiting for job' })}\n\n`);
+      break;
+    }
+    await new Promise((r) => setTimeout(r, SHARED_POLL_MS));
+    const next = await fetchSnapshot(jobId);
+    if (next) snap = next;
+  }
+  res.end();
+}
+
 function emit(job: Job, type: string, data: Record<string, unknown> = {}): void {
   const frame = `data: ${JSON.stringify({ type, ...data })}\n\n`;
   job.log.push(frame);
   for (const res of job.clients) res.write(frame);
+  // Mirror to shared storage so an instance that did not start this job can
+  // still stream it. Terminal events are flushed immediately.
+  const terminal = type === 'done' || type === 'error' || type === 'file-done';
+  void publish(
+    {
+      id: job.id,
+      log: job.log,
+      files: job.files.map((f) => ({
+        index: f.index, name: f.name, size: f.size, type: f.type, href: f.href,
+      })),
+      finished: job.finished,
+      updatedAt: Date.now(),
+    },
+    terminal,
+  );
 }
 
 /** Proxy attempt order for a download, mirroring the CLI's biasing. */
@@ -274,7 +339,8 @@ async function runJob(
         post.cookie,
         makeProgress(job, 0, name),
       );
-      job.files.push({ index: 0, name, path: outPath, size, type: 'video' });
+      const videoHref = await uploadFile(job.id, 0, name, outPath);
+      job.files.push({ index: 0, name, path: outPath, size, type: 'video', href: videoHref });
       emit(job, 'file-done', { index: 0, name, size, fileType: 'video', url: `/api/file/${job.id}/0` });
     } else {
       const pad = String(post.images.length).length;
@@ -287,7 +353,8 @@ async function runJob(
         const name = path.basename(outPath);
         emit(job, 'file-start', { index, name, label: `image ${i + 1}/${post.images.length}` });
         const size = await streamLogicalFile(img.urls, outPath, order, post.cookie, makeProgress(job, index, name));
-        job.files.push({ index, name, path: outPath, size, type: 'image' });
+        const imageHref = await uploadFile(job.id, index, name, outPath);
+        job.files.push({ index, name, path: outPath, size, type: 'image', href: imageHref });
         emit(job, 'file-done', { index, name, size, fileType: 'image', url: `/api/file/${job.id}/${index}` });
         index++;
       }
@@ -297,7 +364,8 @@ async function runJob(
         emit(job, 'file-start', { index, name, label: 'audio' });
         try {
           const size = await streamLogicalFile(post.audio.urls, outPath, order, post.cookie, makeProgress(job, index, name));
-          job.files.push({ index, name, path: outPath, size, type: 'audio' });
+          const audioHref = await uploadFile(job.id, index, name, outPath);
+          job.files.push({ index, name, path: outPath, size, type: 'audio', href: audioHref });
           emit(job, 'file-done', { index, name, size, fileType: 'audio', url: `/api/file/${job.id}/${index}` });
         } catch (e) {
           emit(job, 'status', { message: `Audio track skipped (${errMsg(e)})` });
@@ -310,6 +378,7 @@ async function runJob(
     emit(job, 'error', { message: `Download failed: ${errMsg(e)}` });
   } finally {
     job.finished = true;
+    emit(job, 'finished');
     // Best-effort cleanup of disk + job state after 30 min.
     setTimeout(() => {
       jobs.delete(job.id);
@@ -532,8 +601,10 @@ async function handleApi(req: http.IncomingMessage, res: http.ServerResponse, ur
 
   const eventsMatch = pathname.match(/^\/api\/events\/([\w-]+)$/);
   if (eventsMatch && method === 'GET') {
-    const job = jobs.get(eventsMatch[1]!);
-    if (!job) return sendJson(res, 404, { error: 'unknown job' });
+    const jobId = eventsMatch[1]!;
+    const job = jobs.get(jobId);
+    // Not ours: another instance started it, so follow the shared snapshot.
+    if (!job) return streamSharedJob(req, res, jobId);
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
@@ -553,9 +624,22 @@ async function handleApi(req: http.IncomingMessage, res: http.ServerResponse, ur
 
   const fileMatch = pathname.match(/^\/api\/file\/([\w-]+)\/(\d+)$/);
   if (fileMatch && method === 'GET') {
-    const job = jobs.get(fileMatch[1]!);
-    const file = job?.files.find((f) => f.index === Number(fileMatch[2]));
-    if (!job || !file || !existsSync(file.path)) return sendJson(res, 404, { error: 'file not found' });
+    const fileJobId = fileMatch[1]!;
+    const fileIndex = Number(fileMatch[2]);
+    const job = jobs.get(fileJobId);
+    const file = job?.files.find((f) => f.index === fileIndex);
+
+    if (!file || !existsSync(file.path)) {
+      // Either a different instance holds the bytes, or this one was recycled.
+      const snap = await fetchSnapshot(fileJobId);
+      const remote = snap?.files.find((f) => f.index === fileIndex);
+      if (remote?.href) {
+        res.writeHead(302, { Location: remote.href });
+        res.end();
+        return;
+      }
+      return sendJson(res, 404, { error: 'file not found' });
+    }
     const { size } = await stat(file.path);
     res.writeHead(200, {
       'Content-Type': 'application/octet-stream',

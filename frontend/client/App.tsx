@@ -209,8 +209,8 @@ export default function App() {
             </span>
           </a>
           <nav className="top-actions">
-            <button type="button" className="top-link" onClick={() => setExploreOpen(true)} title="Explore trending — get a link to test">
-              ✨ Explore
+            <button type="button" className="top-link explore" onClick={() => setExploreOpen(true)} title="Explore trending, get a link to test">
+              ✨ <span>Explore</span>
             </button>
             <a
               className="top-link"
