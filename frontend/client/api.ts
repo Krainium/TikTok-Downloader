@@ -1,8 +1,11 @@
+/// <reference types="vite/client" />
 /** Typed wrappers around the backend API + the SSE job stream. */
 import type { ConfigInfo, ExploreItem, JobEvent, PostInfo, ProxyMode } from './types';
 
+const API_BASE = import.meta.env.VITE_API_BASE ?? "";
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, {
+  const res = await fetch(API_BASE + path, {
     ...init,
     headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
   });
@@ -40,7 +43,7 @@ export const api = {
  * The stream is closed automatically on a terminal `done`/`error` event.
  */
 export function streamJob(jobId: string, onEvent: (e: JobEvent) => void): () => void {
-  const es = new EventSource(`/api/events/${jobId}`);
+  const es = new EventSource(`${API_BASE}/api/events/${jobId}`);
   es.onmessage = (msg) => {
     let parsed: JobEvent;
     try {

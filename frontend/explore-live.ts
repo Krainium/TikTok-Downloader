@@ -14,6 +14,8 @@
 import type { Browser } from 'playwright';
 import { PROXY, proxyConfigured } from '../src/config.js';
 
+const PUBLIC_BASE = process.env.PUBLIC_BASE ?? "";
+
 export interface LiveItem {
   url: string;
   title: string;
@@ -98,7 +100,7 @@ function normalize(it: Record<string, any>): LiveItem | null {
     url: `https://www.tiktok.com/@${author}/video/${id}`,
     title: str(it.desc).trim() || 'TikTok video',
     author,
-    thumb: cover ? `/api/thumb?url=${encodeURIComponent(cover)}` : null,
+    thumb: cover ? `${PUBLIC_BASE}/api/thumb?url=${encodeURIComponent(cover)}` : null,
   };
 }
 
