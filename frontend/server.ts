@@ -34,6 +34,8 @@ import { makeBase, uniquePath, guessImageExt, resolutionLabel } from '../src/uti
 import { fetchLiveTrending, closeBrowser } from './explore-live.js';
 import type { ProxyMode, TikTokPost, VideoFormat } from '../src/types.js';
 
+const PUBLIC_BASE = process.env.PUBLIC_BASE ?? "";
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_DIR = path.join(__dirname, 'dist'); // vite build output (React bundle)
 const CACHE_DIR = path.resolve(__dirname, '..', 'downloads', 'web');
@@ -102,7 +104,7 @@ async function oembed(url: string): Promise<ExploreItem | null> {
         url: canonical,
         title: (typeof d.title === 'string' && d.title.trim()) || 'TikTok video',
         author: typeof d.author_unique_id === 'string' ? d.author_unique_id : '',
-        thumb: thumb ? `/api/thumb?url=${encodeURIComponent(thumb)}` : null,
+        thumb: thumb ? `${PUBLIC_BASE}/api/thumb?url=${encodeURIComponent(thumb)}` : null,
       };
     } catch {
       /* try next transport */
@@ -341,7 +343,7 @@ async function runJob(
       );
       const videoHref = await uploadFile(job.id, 0, name, outPath);
       job.files.push({ index: 0, name, path: outPath, size, type: 'video', href: videoHref });
-      emit(job, 'file-done', { index: 0, name, size, fileType: 'video', url: `/api/file/${job.id}/0` });
+      emit(job, 'file-done', { index: 0, name, size, fileType: 'video', url: `${PUBLIC_BASE}/api/file/${job.id}/0` });
     } else {
       const pad = String(post.images.length).length;
       let index = 0;
@@ -355,7 +357,7 @@ async function runJob(
         const size = await streamLogicalFile(img.urls, outPath, order, post.cookie, makeProgress(job, index, name));
         const imageHref = await uploadFile(job.id, index, name, outPath);
         job.files.push({ index, name, path: outPath, size, type: 'image', href: imageHref });
-        emit(job, 'file-done', { index, name, size, fileType: 'image', url: `/api/file/${job.id}/${index}` });
+        emit(job, 'file-done', { index, name, size, fileType: 'image', url: `${PUBLIC_BASE}/api/file/${job.id}/${index}` });
         index++;
       }
       if (opts.withAudio && post.audio) {
@@ -366,14 +368,14 @@ async function runJob(
           const size = await streamLogicalFile(post.audio.urls, outPath, order, post.cookie, makeProgress(job, index, name));
           const audioHref = await uploadFile(job.id, index, name, outPath);
           job.files.push({ index, name, path: outPath, size, type: 'audio', href: audioHref });
-          emit(job, 'file-done', { index, name, size, fileType: 'audio', url: `/api/file/${job.id}/${index}` });
+          emit(job, 'file-done', { index, name, size, fileType: 'audio', url: `${PUBLIC_BASE}/api/file/${job.id}/${index}` });
         } catch (e) {
           emit(job, 'status', { message: `Audio track skipped (${errMsg(e)})` });
         }
         index++;
       }
     }
-    emit(job, 'done', { files: job.files.map((f) => ({ index: f.index, name: f.name, size: f.size, type: f.type, url: `/api/file/${job.id}/${f.index}` })) });
+    emit(job, 'done', { files: job.files.map((f) => ({ index: f.index, name: f.name, size: f.size, type: f.type, url: `${PUBLIC_BASE}/api/file/${job.id}/${f.index}` })) });
   } catch (e) {
     emit(job, 'error', { message: `Download failed: ${errMsg(e)}` });
   } finally {
@@ -518,7 +520,7 @@ function postToInfo(post: TikTokPost) {
     title: post.title,
     uploader: post.uploader ?? null,
     usedProxy: post.usedProxy,
-    thumbnail: post.thumbnail ? `/api/thumb?url=${encodeURIComponent(post.thumbnail)}` : null,
+    thumbnail: post.thumbnail ? `${PUBLIC_BASE}/api/thumb?url=${encodeURIComponent(post.thumbnail)}` : null,
     webpageUrl: post.webpageUrl,
   };
   if (post.kind === 'video') {
@@ -540,7 +542,7 @@ function postToInfo(post: TikTokPost) {
     ...baseMeta,
     imageCount: post.images.length,
     images: post.images.map((im) => ({
-      thumb: `/api/thumb?url=${encodeURIComponent(im.url)}`,
+      thumb: `${PUBLIC_BASE}/api/thumb?url=${encodeURIComponent(im.url)}`,
       width: im.width ?? null,
       height: im.height ?? null,
     })),
