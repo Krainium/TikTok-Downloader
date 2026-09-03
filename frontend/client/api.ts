@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 /** Typed wrappers around the backend API + the SSE job stream. */
 import type { ConfigInfo, ExploreItem, JobEvent, PostInfo, ProxyMode } from './types';
 
