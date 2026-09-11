@@ -1,5 +1,11 @@
 {
   "buildCommand": "npm run web:build",
   "outputDirectory": "frontend/dist",
-  "framework": null
+  "framework": null,
+  "routes": [
+    {
+      "src": "/api/(.+)",
+      "dest": "/api/proxy?p=$1"
+    }
+  ]
 }
