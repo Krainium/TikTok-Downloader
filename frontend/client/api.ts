@@ -2,7 +2,7 @@
 /** Typed wrappers around the backend API + the SSE job stream. */
 import type { ConfigInfo, ExploreItem, JobEvent, PostInfo, ProxyMode } from './types';
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? "";
+const API_BASE = "";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(API_BASE + path, {
@@ -55,8 +55,6 @@ export function streamJob(jobId: string, onEvent: (e: JobEvent) => void): () => 
     if (parsed.type === 'done' || parsed.type === 'error') es.close();
   };
   es.onerror = () => {
-    // The server ends the stream after a terminal event; ignore the resulting
-    // error once we're already closing. Otherwise surface a connection drop.
     if (es.readyState === EventSource.CLOSED) return;
   };
   return () => es.close();
